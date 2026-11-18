@@ -1,0 +1,335 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Algoritmul Ford pas cu pas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@600&display=swap">
+<style>
+/* Layout: grafic SVG mare stânga, panou de control și tabele dreapta; pe telefon totul pe o coloană. */
+:root{
+  --bg:#F3F7F7; --surface:#FFFFFF; --fg:#17323A; --muted:#5C7479; --line:#D4E1E2;
+  --accent:#2A6F77; --accent-soft:#DCEBEC; --amber:#E8A33D; --amber-soft:#FBEBD0;
+  --red:#C8553D; --green:#2F8F5B; --green-soft:#D8EEDF; --node:#EAF1F1;
+  --f-body:'Inter',system-ui,sans-serif; --f-head:'Space Grotesk','Inter',system-ui,sans-serif; --f-mono:'JetBrains Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F1E22; --surface:#17292E; --fg:#E4EEEF; --muted:#8FA7AB; --line:#2A4247;
+  --accent:#6FB8BF; --accent-soft:#1F3B40; --amber:#F0B458; --amber-soft:#3D3320;
+  --red:#E57C65; --green:#5BC48A; --green-soft:#1D3A2B; --node:#1F3A40; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1E22; --surface:#17292E; --fg:#E4EEEF; --muted:#8FA7AB; --line:#2A4247;
+  --accent:#6FB8BF; --accent-soft:#1F3B40; --amber:#F0B458; --amber-soft:#3D3320;
+  --red:#E57C65; --green:#5BC48A; --green-soft:#1D3A2B; --node:#1F3A40; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-body);padding-block:20px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:16px}
+header h1{font:600 26px/1.15 var(--f-head);margin:0 0 4px;text-wrap:balance}
+header p{margin:0;color:var(--muted);max-width:70ch}
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+h2{font:600 13px/1.2 var(--f-body);text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 10px}
+.stack{display:grid;gap:16px;min-width:0}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:500 14px var(--f-body);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:8px 14px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:default}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] button.primary{color:#0F1E22}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) button.primary{color:#0F1E22}}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stepinfo{margin-left:auto;font:500 13px var(--f-mono);color:var(--muted)}
+.svgbox{background:var(--bg);border-radius:8px;border:1px solid var(--line);touch-action:none}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:var(--f-mono)}
+.status{margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--accent-soft);font-size:14px}
+.status.done{background:var(--green-soft)}
+.status.warn{background:var(--amber-soft)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:18px;height:0;border-top:3px solid;vertical-align:middle;margin-right:6px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font:500 13px var(--f-mono);font-variant-numeric:tabular-nums}
+th,td{padding:5px 9px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font:600 12px var(--f-body);color:var(--muted)}
+tr.imp td{background:var(--amber-soft)}
+tr.tight td{background:var(--green-soft)}
+td.cur,th.cur{background:var(--accent-soft)}
+td.chg{color:var(--red);font-weight:600}
+.form{display:grid;gap:10px}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+label{display:grid;gap:3px;font-size:12.5px;color:var(--muted)}
+input,select,textarea{font:14px var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-width:0}
+input[type=number]{width:70px}
+textarea{width:100%;min-height:150px;resize:vertical}
+.err{color:var(--red);font-size:13px;min-height:1em}
+.paths li{margin:3px 0;font-family:var(--f-mono);font-size:14px}
+.formula{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Algoritmul Ford, pas cu pas</h1>
+  <p>Exemplul 4.11, Fig. 4.19. Valorile λ se actualizează sincron: la fiecare iterație se folosesc doar valorile iterației precedente. Un arc (i, j) îmbunătățește λ<sub>j</sub> când λ<sub>j</sub> − λ<sub>i</sub> &gt; v(i, j) pentru minim, respectiv &lt; v(i, j) pentru maxim.</p>
+</header>
+
+<div class="grid">
+  <section class="card">
+    <div class="controls">
+      <button id="bBack">← Înapoi</button>
+      <button id="bNext" class="primary">Pasul următor →</button>
+      <button id="bEnd">Până la final</button>
+      <button id="bReset">De la început</button>
+      <span class="stepinfo" id="stepinfo"></span>
+    </div>
+    <div class="svgbox" style="margin-top:12px"><svg id="svg" viewBox="0 0 640 400" role="img" aria-label="Graful orientat cu valorile λ"></svg></div>
+    <div class="legend">
+      <span><i style="border-color:var(--amber)"></i>arc care îmbunătățește λ la acest pas</span>
+      <span><i style="border-color:var(--green)"></i>arc al drumului optim</span>
+      <span><i style="border-color:var(--muted);opacity:.6"></i>arc neutilizat</span>
+    </div>
+    <div class="status" id="status"></div>
+  </section>
+
+  <div class="stack">
+    <section class="card">
+      <h2>Verificarea arcelor la acest pas</h2>
+      <div class="tablewrap"><table id="tDiff"></table></div>
+    </section>
+    <section class="card">
+      <h2>Valorile λ pe iterații</h2>
+      <div class="tablewrap"><table id="tLam"></table></div>
+    </section>
+    <section class="card" id="resCard" hidden>
+      <h2>Rezultat</h2>
+      <div id="result"></div>
+    </section>
+  </div>
+</div>
+
+<section class="card">
+  <h2>Graful tău</h2>
+  <form class="form" id="form">
+    <div class="row">
+      <label>Noduri (n)<input type="number" id="iN" min="2" max="12" value="6"></label>
+      <label>Sursa<input type="number" id="iS" min="1" max="12" value="1"></label>
+      <label>Destinația<input type="number" id="iT" min="1" max="12" value="6"></label>
+      <label>Problema<select id="iMode"><option value="min">Valoare minimă</option><option value="max">Valoare maximă</option></select></label>
+    </div>
+    <label>Arce, câte unul pe linie: <span class="formula">i j v(i,j)</span>
+      <textarea id="iArcs" spellcheck="false"></textarea>
+    </label>
+    <div class="controls">
+      <button type="submit" class="primary">Rulează algoritmul</button>
+      <button type="button" id="bExample">Reîncarcă exemplul 4.11</button>
+      <span class="err" id="err" role="alert"></span>
+    </div>
+    <p class="formula" style="margin:0">Poți trage nodurile cu mouse-ul sau cu degetul ca să aranjezi desenul.</p>
+  </form>
+</section>
+</div>
+
+<script>
+(function(){
+var EX={n:6,s:1,t:6,mode:'min',
+  arcs:'1 2 5\n1 3 14\n1 4 15\n1 5 10\n2 5 4\n2 4 11\n3 4 12\n3 6 18\n4 6 10\n5 4 6\n5 6 19',
+  pos:{1:[0.2,1.75],2:[1.6,0.25],3:[1.6,3.3],4:[3.2,1.75],5:[4.6,0.25],6:[5.7,1.75]}};
+var W=640,H=400,R=22,NS='http://www.w3.org/2000/svg';
+var S=null,states=[],imp=[],converged=false,k=0,pos={},paths=[],pathArcs={};
+
+function $(id){return document.getElementById(id)}
+function fmt(x){return x===Infinity?'∞':x===-Infinity?'−∞':String(x).replace('-','−')}
+function el(tag,attrs,parent){var e=document.createElementNS(NS,tag);for(var a in attrs)e.setAttribute(a,attrs[a]);if(parent)parent.appendChild(e);return e}
+
+function parse(){
+  var n=parseInt($('iN').value,10),s=parseInt($('iS').value,10),t=parseInt($('iT').value,10),mode=$('iMode').value;
+  if(!(n>=2&&n<=12))throw 'Numărul de noduri trebuie să fie între 2 și 12.';
+  if(!(s>=1&&s<=n)||!(t>=1&&t<=n))throw 'Sursa și destinația trebuie să fie noduri între 1 și '+n+'.';
+  var lines=$('iArcs').value.split('\n'),arcs=[];
+  for(var l=0;l<lines.length;l++){
+    var ln=lines[l].trim();if(!ln)continue;
+    var p=ln.split(/[\s,;]+/).map(Number);
+    if(p.length<3||p.some(isNaN))throw 'Linia '+(l+1)+': scrie trei numere, de exemplu „1 2 5”.';
+    if(p[0]<1||p[0]>n||p[1]<1||p[1]>n)throw 'Linia '+(l+1)+': nodurile trebuie să fie între 1 și '+n+'.';
+    if(p[0]===p[1])throw 'Linia '+(l+1)+': bucla (i, i) nu este permisă.';
+    arcs.push({i:p[0],j:p[1],v:p[2]});
+  }
+  if(!arcs.length)throw 'Adaugă cel puțin un arc.';
+  return {n:n,s:s,t:t,mode:mode,arcs:arcs};
+}
+
+function run(){
+  var n=S.n,INF=S.mode==='min'?Infinity:-Infinity,lam=[];
+  for(var i=0;i<=n;i++)lam.push(INF);lam[S.s]=0;
+  states=[lam];imp=[];converged=false;
+  for(var it=0;it<n+2;it++){
+    var cur=states[it],next=cur.slice(),list=[];
+    S.arcs.forEach(function(a,idx){
+      var li=cur[a.i];if(!isFinite(li))return;
+      var cand=li+a.v,better=S.mode==='min'?cand<cur[a.j]:cand>cur[a.j];
+      if(better){list.push(idx);if(S.mode==='min'?cand<next[a.j]:cand>next[a.j])next[a.j]=cand}
+    });
+    imp.push(list);
+    if(!list.length){converged=true;break}
+    states.push(next);
+  }
+  paths=[];pathArcs={};
+  if(converged){
+    var fin=states[states.length-1];
+    var tight=S.arcs.map(function(a,idx){return isFinite(fin[a.i])&&isFinite(fin[a.j])&&fin[a.j]-fin[a.i]===a.v});
+    if(isFinite(fin[S.t])){
+      (function dfs(node,seen,acc){
+        if(paths.length>=24)return;
+        if(node===S.s){paths.push({nodes:[S.s].concat(acc.map(function(x){return S.arcs[x].j}).reverse()).slice(0),arcs:acc.slice().reverse()});return}
+        S.arcs.forEach(function(a,idx){
+          if(a.j===node&&tight[idx]&&!seen[a.i]){seen[a.i]=1;acc.push(idx);dfs(a.i,seen,acc);acc.pop();seen[a.i]=0}
+        });
+      })(S.t,(function(){var o={};o[S.t]=1;return o})(),[]);
+      paths.forEach(function(p){
+        var ns=[S.s];p.arcs.forEach(function(x){ns.push(S.arcs[x].j)});p.nodes=ns;
+        p.arcs.forEach(function(x){pathArcs[x]=1});
+      });
+    }
+  }
+}
+
+function circleLayout(n){
+  var o={};for(var i=1;i<=n;i++){var ang=-Math.PI/2+2*Math.PI*(i-1)/n;o[i]=[W/2+Math.cos(ang)*(W/2-60),H/2+Math.sin(ang)*(H/2-50)]}
+  return o;
+}
+function exampleLayout(){
+  var o={};for(var i in EX.pos){var p=EX.pos[i];o[i]=[60+(p[0]-0.2)/5.5*(W-120),55+(p[1]-0.25)/3.05*(H-110)]}
+  return o;
+}
+
+function draw(){
+  var svg=$('svg');while(svg.firstChild)svg.removeChild(svg.firstChild);
+  var defs=el('defs',{},svg);
+  [['m-n','var(--muted)'],['m-i','var(--amber)'],['m-p','var(--green)']].forEach(function(m){
+    var mk=el('marker',{id:m[0],viewBox:'0 0 10 10',refX:'9',refY:'5',markerWidth:'7',markerHeight:'7',orient:'auto-start-reverse'},defs);
+    el('path',{d:'M0,0 L10,5 L0,10 z',fill:m[1]},mk);
+  });
+  var cur=states[k],final=converged&&k===states.length-1,cls=imp[k]||[];
+  var pairCount={};
+  S.arcs.forEach(function(a,idx){
+    var p1=pos[a.i],p2=pos[a.j],dx=p2[0]-p1[0],dy=p2[1]-p1[1],len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len;
+    var bend=S.arcs.some(function(b){return b.i===a.j&&b.j===a.i})?18:0;
+    var nx=-uy,ny=ux;
+    var sx=p1[0]+ux*R+nx*bend*.35,sy=p1[1]+uy*R+ny*bend*.35,ex=p2[0]-ux*(R+4)+nx*bend*.35,ey=p2[1]-uy*(R+4)+ny*bend*.35;
+    var cx=(p1[0]+p2[0])/2+nx*bend,cy=(p1[1]+p2[1])/2+ny*bend;
+    var onPath=final&&pathArcs[idx],isImp=cls.indexOf(idx)>=0;
+    var color=onPath?'var(--green)':isImp?'var(--amber)':'var(--muted)',mk=onPath?'m-p':isImp?'m-i':'m-n';
+    el('path',{d:'M'+sx+','+sy+' Q'+cx+','+cy+' '+ex+','+ey,fill:'none',stroke:color,'stroke-width':(onPath||isImp)?3:1.6,opacity:(onPath||isImp)?1:.55,'marker-end':'url(#'+mk+')'},svg);
+    var lx=(sx+2*cx+ex)/4+nx*9,ly=(sy+2*cy+ey)/4+ny*9;
+    var t=el('text',{x:lx,y:ly+4,'text-anchor':'middle','font-size':13,'font-weight':600,fill:'var(--fg)',stroke:'var(--bg)','stroke-width':4,'paint-order':'stroke'},svg);
+    t.textContent=a.v<0?String(a.v).replace('-','−'):a.v;
+  });
+  for(var i=1;i<=S.n;i++){
+    var p=pos[i],g=el('g',{'data-node':i,style:'cursor:grab'},svg);
+    var isEnd=(i===S.s||i===S.t),changed=k>0&&states[k][i]!==states[k-1][i];
+    el('circle',{cx:p[0],cy:p[1],r:R,fill:changed?'var(--amber-soft)':'var(--node)',stroke:isEnd?'var(--accent)':'var(--muted)','stroke-width':isEnd?3:1.5},g);
+    var t1=el('text',{x:p[0],y:p[1]+5,'text-anchor':'middle','font-size':15,'font-weight':600,fill:'var(--fg)'},g);t1.textContent='x'+i;
+    var lv=cur[i],t2=el('text',{x:p[0],y:p[1]-R-7,'text-anchor':'middle','font-size':13,'font-weight':600,fill:changed?'var(--red)':'var(--accent)'},g);
+    t2.textContent='λ='+fmt(lv);
+  }
+  attachDrag(svg);
+}
+
+function attachDrag(svg){
+  var dragging=null;
+  function pt(e){var r=svg.getBoundingClientRect();return [(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H]}
+  svg.onpointerdown=function(e){var g=e.target.closest&&e.target.closest('[data-node]');if(!g)return;dragging=+g.getAttribute('data-node');try{svg.setPointerCapture(e.pointerId)}catch(x){}};
+  svg.onpointermove=function(e){if(!dragging)return;var p=pt(e);pos[dragging]=[Math.max(R+4,Math.min(W-R-4,p[0])),Math.max(R+22,Math.min(H-R-4,p[1]))];draw()};
+  svg.onpointerup=svg.onpointercancel=function(){dragging=null};
+}
+
+function th(txt,c){return '<th'+(c?' class="'+c+'"':'')+'>'+txt+'</th>'}
+function tables(){
+  var cur=states[k],cls=imp[k]||[],final=converged&&k===states.length-1;
+  var h='<tr>'+th('arc')+th('v')+th('λ<sub>j</sub> − λ<sub>i</sub>')+th('λ<sub>i</sub> + v')+th('')+'</tr>';
+  S.arcs.forEach(function(a,idx){
+    var li=cur[a.i],lj=cur[a.j],isImp=cls.indexOf(idx)>=0,tight=final&&pathArcs[idx];
+    var diff=isFinite(li)?(isFinite(lj)?fmt(lj-li):fmt(lj)):'—';
+    var cand=isFinite(li)?fmt(li+a.v):'—';
+    var mark=isImp?(S.mode==='min'?'&gt; v ✱':'&lt; v ✱'):tight?'= v ✓':'';
+    h+='<tr class="'+(isImp?'imp':tight?'tight':'')+'"><td>(x'+a.i+', x'+a.j+')</td><td>'+fmt(a.v)+'</td><td>'+diff+'</td><td>'+cand+'</td><td>'+mark+'</td></tr>';
+  });
+  $('tDiff').innerHTML=h;
+  var hl='<tr>'+th('')+states.map(function(_,c){return c<=k?th('k='+c,c===k?'cur':''):''}).join('')+'</tr>';
+  for(var i=1;i<=S.n;i++){
+    hl+='<tr><th>λ<sub>'+i+'</sub></th>';
+    for(var c=0;c<=k;c++){
+      var ch=c>0&&states[c][i]!==states[c-1][i];
+      hl+='<td class="'+(c===k?'cur ':'')+(ch?'chg':'')+'">'+fmt(states[c][i])+'</td>';
+    }
+    hl+='</tr>';
+  }
+  $('tLam').innerHTML=hl;
+}
+
+function statusText(){
+  var st=$('status'),cur=states[k],final=converged&&k===states.length-1,cls=imp[k]||[];
+  st.className='status';
+  var kind=S.mode==='min'?'minim':'maxim';
+  if(k===0&&states.length>1||(k===0&&!converged)){
+    st.innerHTML='<b>Inițializare.</b> λ<sub>'+S.s+'</sub> = 0, iar celelalte valori sunt '+fmt(S.mode==='min'?Infinity:-Infinity)+'. '+(cls.length?'Arcele evidențiate pot îmbunătăți valorile la pasul următor.':'');
+  }else if(final){
+    st.className='status done';
+    st.innerHTML='<b>Algoritmul s-a oprit la iterația '+k+'.</b> Niciun arc nu mai îmbunătățește valorile λ, deci '+(isFinite(cur[S.t])?'valoarea '+kind+' a drumului de la x'+S.s+' la x'+S.t+' este <b>'+fmt(cur[S.t])+'</b>.':'nodul x'+S.t+' nu poate fi atins din x'+S.s+'.');
+  }else if(!converged&&k===states.length-1){
+    st.className='status warn';
+    st.innerHTML='<b>Valorile încă se modifică după '+(S.n+1)+' iterații.</b> Graful are un circuit de valoare '+(S.mode==='min'?'negativă':'pozitivă')+', deci problema nu are optim finit.';
+  }else{
+    st.innerHTML='<b>Iterația '+k+'.</b> '+cls.length+' arce îmbunătățesc λ (evidențiate). Valorile noi se calculează din iterația '+k+' și apar la pasul '+(k+1)+'.';
+  }
+  var final2=final;
+  $('resCard').hidden=!final2;
+  if(final2){
+    var r='';
+    if(!isFinite(states[k][S.t])){r='<p>Nodul x'+S.t+' nu este accesibil din x'+S.s+'.</p>'}
+    else{
+      r='<p style="margin:0 0 6px">Valoarea '+kind+': <b style="font-family:var(--f-mono)">'+fmt(states[k][S.t])+'</b>. '+(paths.length>1?'Există '+paths.length+' drumuri optime:':'Drumul optim:')+'</p><ul class="paths" style="margin:0;padding-left:18px">';
+      paths.forEach(function(p){
+        var tot=p.arcs.reduce(function(s,x){return s+S.arcs[x].v},0);
+        r+='<li>('+p.nodes.map(function(x){return 'x'+x}).join(', ')+') &nbsp;valoare '+fmt(tot)+'</li>';
+      });
+      r+='</ul><p class="formula" style="margin:8px 0 0">Reconstrucție de la x'+S.t+' înapoi, prin arcele cu λ<sub>j</sub> − λ<sub>i</sub> = v(i, j).</p>';
+    }
+    $('result').innerHTML=r;
+  }
+}
+
+function render(){
+  var last=states.length-1;
+  $('stepinfo').textContent='iterația '+k+(converged?' din '+last:'');
+  $('bBack').disabled=k===0;
+  $('bNext').disabled=k>=last;
+  $('bEnd').disabled=k>=last;
+  draw();tables();statusText();
+}
+
+function load(layoutEx){
+  try{S=parse()}catch(e){$('err').textContent=typeof e==='string'?e:'Date invalide.';return}
+  $('err').textContent='';
+  run();k=0;
+  pos=layoutEx?exampleLayout():circleLayout(S.n);
+  render();
+}
+function setExample(){
+  $('iN').value=EX.n;$('iS').value=EX.s;$('iT').value=EX.t;$('iMode').value=EX.mode;$('iArcs').value=EX.arcs;
+  load(true);
+}
+
+$('bNext').onclick=function(){if(k<states.length-1){k++;render()}};
+$('bBack').onclick=function(){if(k>0){k--;render()}};
+$('bEnd').onclick=function(){k=states.length-1;render()};
+$('bReset').onclick=function(){k=0;render()};
+$('bExample').onclick=setExample;
+$('form').addEventListener('submit',function(e){e.preventDefault();load(false)});
+document.addEventListener('keydown',function(e){
+  if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+  if(e.key==='ArrowRight')$('bNext').click();else if(e.key==='ArrowLeft')$('bBack').click();
+});
+setExample();
+})();
+</script>
+
+</body></html>
